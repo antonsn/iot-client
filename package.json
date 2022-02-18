@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "loglevel": "^1.2.0",
+    "macaddress": "^0.5.2",
+    "raspi-serial": "^6.0.0",
+    "raspi-serial-number": "^1.0.6",
+    "socket.io-client": "4.4.0"
+  }
+}

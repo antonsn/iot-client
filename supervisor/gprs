@@ -1,0 +1,26 @@
+#user "myusername@realm"
+#connect "/usr/sbin/chat -v -f /etc/chatscripts/pap -T ********"
+connect "/usr/sbin/chat -v -f /etc/chatscripts/gprs -T internet.telekom"
+#/dev/modem
+/dev/ttyS0 
+# Speed of the serial line.
+115200
+nocrtscts
+debug
+nodetach
+#ipcp-accept-local
+#ipcp-accept-remote
+# Assumes that your IP address is allocated dynamically by the ISP.
+noipdefault
+# Try to get the name server addresses from the ISP.
+usepeerdns
+# Use this connection as the default route.
+defaultroute
+# Makes pppd "dial again" when the connection is lost.
+persist
+# Do not ask the remote to authenticate.
+noauth
+local
+maxfail 0
+#ipv6cp-use-ipaddr
+#noipv6

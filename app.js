@@ -71,6 +71,7 @@ var log = require("./log.js")();
 
 
 const { getSerialNumber, getSerialNumberSync } = require('raspi-serial-number');
+const { download } = require('./lib/downloadFile.js');
 const sn = getSerialNumberSync();
 
 var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] });
@@ -97,7 +98,7 @@ socket.on("request", function (request) {
     };
 
     switch (request.command) {
-   
+
       case "p":
         const currentTimeInSec = Math.trunc(new Date().getTime() / 1000)
         socket.emit("response", `${currentTimeInSec}|${sn}|${density}|${temperature}${flow1}`);
@@ -115,6 +116,18 @@ socket.on("request", function (request) {
         callResponse(response)
 
         break;
+
+      case "update":
+
+      let url = request.data.url;
+  
+      
+      
+      
+     
+
+        break;
+
       case "execute-cmd":
 
         exec(request.params, function (error, stdout, stderr) {

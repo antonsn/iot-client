@@ -1,163 +1,172 @@
-//let serverUrl = "http://20.71.255.57:80"
-let serverUrl = "http://iot-cloud.azurewebsites.net:80"
-//let serverUrl = "http://localhost:80"
-//let serverUrl = "http://192.168.2.101:80"
-let portId = "/dev/ttyUSB0"
+const io = require('socket.io-client')
+const util = require('util')
+const log = require("./lib/log.js")()
+const updateDotenv = require('update-dotenv')
+const downloader = require('./lib/patch.js')
 
-var io = require('socket.io-client');
+require('dotenv').config()
 
+let portId = process.env.SERIAL
+let serverUrl = process.env.SERVER_URL
+// "http://iot-cloud.azurewebsites.net:80"
 
+let sn
 var serialRequest = ""
 var density = 0.0
 var temperature = 0.0
 var flow1 = 0.0
 
+if (process.env.MOCK_SERIAL !== "true") {
+  const { getSerialNumberSync } = require('raspi-serial-number')
+  sn = getSerialNumberSync()
 
+  // Serial Port initializations
+  const SerialPort = require('serialport')
+  const Readline = require('@serialport/parser-readline')
+  const port = new SerialPort(portId, { baudRate: 115200 })
+  const parser = port.pipe(new Readline({ delimiter: '\r' }))
 
-// Serial Port initializations
-const SerialPort = require('serialport')
-const Readline = require('@serialport/parser-readline')
-const port = new SerialPort(portId, { baudRate: 115200 })
-const parser = port.pipe(new Readline({ delimiter: '\r' }))
+  parser.on('data', readSerialData)
+}
+else { //use mock serial
 
-parser.on('data', readSerialData)
+  sn = "mock_pi"
+  let between = (min, max) => {
+    return Math.floor(
+      Math.random() * (max - min) + min
+    )
+  }
 
+  setInterval(() => {
+    density = between(1, 5)
+    temperature = between(20, 25)
+    flow1 = between(1, 5)
+  }, 1000)
+
+}
 
 function readSerialData(data) {
   try {
 
-    //log.info("serial data:" + data);
-    let serialResponse = data.toString('utf8');
+    //log.info("serial data:" + data)
+    let serialResponse = data.toString('utf8')
     switch (serialRequest) {   // serialRequest will contain a previously received command or empty string
       case "SYS":
-        log.info("Command Received: " + serialRequest);
-        serialRequest = "";
-        density = parseFloat(serialResponse);
-        log.info("Density : " + density);
-        break;
+        log.info("Command Received: " + serialRequest)
+        serialRequest = ""
+        density = parseFloat(serialResponse)
+        log.info("Density : " + density)
+        break
 
       case "TEMP":
-        log.info("Command Received: " + serialRequest);
-        serialRequest = "";
-        temperature = parseFloat(serialResponse);
-        log.info("Temperature : " + temperature);
-        break;
+        log.info("Command Received: " + serialRequest)
+        serialRequest = ""
+        temperature = parseFloat(serialResponse)
+        log.info("Temperature : " + temperature)
+        break
 
       case "FLOW1":
-        log.info("Command Received: " + serialRequest);
-        serialRequest = "";
-        flow1 = parseFloat(serialResponse);
-        log.info("Flow1 : " + flow1);
-        break;
+        log.info("Command Received: " + serialRequest)
+        serialRequest = ""
+        flow1 = parseFloat(serialResponse)
+        log.info("Flow1 : " + flow1)
+        break
 
       default:
 
         if (serialResponse.includes('SYS')) {
-          serialRequest = "SYS";
+          serialRequest = "SYS"
         } else if (serialResponse.includes('TEMP')) {
-          serialRequest = "TEMP";
+          serialRequest = "TEMP"
         } else if (serialResponse.includes('FLOW1')) {
           serialRequest = "FLOW1"
         } else {
-          serialRequest = "";
+          serialRequest = ""
         }
-        break;
+        break
     }
   } catch (e) { log.error(e.message) }
 }
 
-var util = require('util');
-var log = require("./log.js")();
 
+var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] })
 
-const { getSerialNumber, getSerialNumberSync } = require('raspi-serial-number');
-const { download } = require('./lib/downloadFile.js');
-const sn = getSerialNumberSync();
-
-var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] });
+var rlog = require("./lib/remote-log.js")(socket)
 
 socket.on('connect', function (socket) {
-  log.info(`Connected to cloud ${serverUrl}!`);
-});
+  log.info(`Connected to cloud ${serverUrl}!`)
+  rlog.log(`connected to ${serverUrl}`)
+})
 
 socket.on("connect_error", (err) => {
-  log.info(`connect_error due to ${err}`);
-});
+  log.info(`connect_error due to ${err}`)
+})
+
+socket.on("p", async function (request) {
+  socket.emit("r", `${sn}|${density}|${temperature}${flow1}`)
+})
 
 
-socket.on("request", function (request) {
+socket.on("us", async function (request) {
+  try {
+    updateDotenv({
+      [request.data.settingName]: request.data.settingValue
+    }).then(() =>
+      rlog.log(`updated setting ${request.data.settingName} to ${request.data.settingValue}`)
+    )
+  } catch (error) {
+    rlog.error(`error updateDotenv  ${error.message}`)
+  }
+
+})
+
+
+socket.on("request", async function (request) {
 
   try {
-    log.info("request ");
-    log.info(util.inspect(request, false, null));
+    log.info("request ")
+    log.info(util.inspect(request, false, null))
 
-    socket.emit("response", request.command + " received");
-
-    var response = {
-      request: request
-    };
+    //    socket.emit("response", request.command + " received")
 
     switch (request.command) {
 
-      case "p":
-        const currentTimeInSec = Math.trunc(new Date().getTime() / 1000)
-        socket.emit("response", `${currentTimeInSec}|${sn}|${density}|${temperature}${flow1}`);
-        break;
+      // case "p": //ping
+      //   socket.emit("r", `${sn}|${density}|${temperature}${flow1}`)
+      //   break
 
-      case "ping":
+      // case "us": //update setting
+      //   try {
+      //     updateDotenv({
+      //       [request.data.settingName]: request.data.settingValue
+      //     }).then(() =>
+      //       rlog.log(`updated setting ${request.data.settingName} to ${request.data.settingValue}`)
+      //     )
+      //   } catch (error) {
+      //     rlog.error(`error updateDotenv  ${error.message}`)
+      //   }
 
-        response.data = {
-          time: new Date().toISOString(),
-          sn: sn,
-          dens: density,
-          temp: temperature,
-          flow: flow1
-        };
-        callResponse(response)
+      //   break
 
-        break;
+      case "gs": //get setting
+        rlog.log(`setting ${request.data.setting} is ${process.env[request.data.setting]}`)
+        break
 
-      case "update":
+      case "u": //update code
 
-      let url = request.data.url;
-  
-      
-      
-      
-     
-
-        break;
-
-      case "execute-cmd":
-
-        exec(request.params, function (error, stdout, stderr) {
-          log.info("stdout:" + stdout);
-          log.error("stderr:" + stderr);
-          log.error("error:" + error);
-
-          response.error = error + stderr;
-          response.out = stdout;
-
-          callResponse(response);
-
-        });
-
-
-        break;
+        try {
+          let url = request.data.url
+          await downloader.applyPatch(url, rlog, "extract")
+        } catch (error) {
+          rlog.error(`error apply patch ${error.message}`)
+        }
+        break
 
     }
 
   } catch (e) { log.error(e.message) }
-});
+})
 
 
-
-function callResponse(response) {
-
-  log.info("response ");
-  log.info(util.inspect(response, false, null));
-
-  socket.emit("response", response);
-}
 
 

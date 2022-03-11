@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "app-root-path": "^3.0.0",
     "copyfiles": "^2.4.1",
     "dotenv": "^16.0.0",
     "fs-extra": "^10.0.0",

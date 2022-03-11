@@ -16,6 +16,11 @@ var density = 0.0
 var temperature = 0.0
 var flow1 = 0.0
 
+const ping = "p"
+const updateSettings = "us"
+const applyPatch = "ap"
+const restart = "restart"
+
 if (process.env.MOCK_SERIAL !== "true") {
   const { getSerialNumberSync } = require('raspi-serial-number')
   sn = getSerialNumberSync()
@@ -91,9 +96,11 @@ function readSerialData(data) {
 
 var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] })
 
-var rlog = require("./lib/remote-log.js")(socket)
+var rlog = require("./lib/remote-log.js")(socket, sn)
 
 socket.on('connect', function (socket) {
+
+
   log.info(`Connected to cloud ${serverUrl}!`)
   rlog.log(`connected to ${serverUrl}`)
 })
@@ -102,12 +109,12 @@ socket.on("connect_error", (err) => {
   log.info(`connect_error due to ${err}`)
 })
 
-socket.on("p", async function (request) {
+
+socket.on(ping, async function (request) {
   socket.emit("r", `${sn}|${density}|${temperature}${flow1}`)
 })
 
-
-socket.on("us", async function (request) {
+socket.on(updateSettings, async function (request) {
   try {
     updateDotenv({
       [request.data.settingName]: request.data.settingValue
@@ -120,52 +127,36 @@ socket.on("us", async function (request) {
 
 })
 
-
-socket.on("request", async function (request) {
-
+socket.on(restart, async function (request) {
   try {
-    log.info("request ")
-    log.info(util.inspect(request, false, null))
 
-    //    socket.emit("response", request.command + " received")
+    const util = require('util');
+    const exec = util.promisify(require('child_process').exec);
+    const { stdout, stderr } = await exec('sudo supervisorctl restart  iot');
 
-    switch (request.command) {
+    rlog.log(`restart`, stdout)
 
-      // case "p": //ping
-      //   socket.emit("r", `${sn}|${density}|${temperature}${flow1}`)
-      //   break
-
-      // case "us": //update setting
-      //   try {
-      //     updateDotenv({
-      //       [request.data.settingName]: request.data.settingValue
-      //     }).then(() =>
-      //       rlog.log(`updated setting ${request.data.settingName} to ${request.data.settingValue}`)
-      //     )
-      //   } catch (error) {
-      //     rlog.error(`error updateDotenv  ${error.message}`)
-      //   }
-
-      //   break
-
-      case "gs": //get setting
-        rlog.log(`setting ${request.data.setting} is ${process.env[request.data.setting]}`)
-        break
-
-      case "u": //update code
-
-        try {
-          let url = request.data.url
-          await downloader.applyPatch(url, rlog, "extract")
-        } catch (error) {
-          rlog.error(`error apply patch ${error.message}`)
-        }
-        break
-
+    if (stderr) {
+      rlog.error(`restart`, stderr)
     }
 
-  } catch (e) { log.error(e.message) }
+  } catch (error) {
+    rlog.error(`error restart  ${error.message}`)
+  }
+
 })
+
+
+socket.on(applyPatch, async function (request) {
+  try {
+    let url = request.data.patchUrl
+    await downloader.applyPatch(url, rlog, "./")
+  } catch (error) {
+    rlog.error(`error apply patch ${error.message}`)
+  }
+})
+
+
 
 
 

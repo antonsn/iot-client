@@ -128,21 +128,31 @@ socket.on(updateSettings, async function (request) {
 })
 
 socket.on(restart, async function (request) {
-  try {
 
-    const util = require('util');
-    const exec = util.promisify(require('child_process').exec);
-    const { stdout, stderr } = await exec('sudo supervisorctl restart  iot');
+  rlog.log(`restart planned `)
 
-    rlog.log(`restart`, stdout)
+  const { exec } = require('child_process');
 
-    if (stderr) {
-      rlog.error(`restart`, stderr)
-    }
 
-  } catch (error) {
-    rlog.error(`error restart  ${error.message}`)
-  }
+  setTimeout(function () {
+    rlog.log(`restart NOW `)
+     process.exit();
+  }, 5000)
+
+    // exec('supervisorctl restart iot', (error, stdout, stderr) => {
+    //   if (error) {
+    //     rlog.error(`error: ${error.message}`);
+    //     return;
+    //   }
+
+    //   if (stderr) {
+    //     rlog.error(`stderr: ${stderr}`);
+    //     return;
+    //   }
+
+    //   rlog.log(`stdout:\n${stdout}`);
+    // });
+
 
 })
 

@@ -8,7 +8,7 @@ require('dotenv').config()
 
 let portId = process.env.SERIAL
 let serverUrl = process.env.SERVER_URL
-// "http://iot-cloud.azurewebsites.net:80"
+
 
 let sn
 var serialRequest = ""
@@ -42,10 +42,11 @@ else { //use mock serial
     )
   }
 
+  
   setInterval(() => {
-    density = between(1, 5)
-    temperature = between(20, 25)
-    flow1 = between(1, 5)
+    density = between(0, 5000)
+    temperature = between(0, 50)
+    flow1 = between(0, 500)
   }, 1000)
 
 }
@@ -59,21 +60,27 @@ function readSerialData(data) {
       case "SYS":
         log.info("Command Received: " + serialRequest)
         serialRequest = ""
+
         density = parseFloat(serialResponse)
+
         log.info("Density : " + density)
         break
 
       case "TEMP":
         log.info("Command Received: " + serialRequest)
         serialRequest = ""
+
         temperature = parseFloat(serialResponse)
+
         log.info("Temperature : " + temperature)
         break
 
       case "FLOW1":
         log.info("Command Received: " + serialRequest)
         serialRequest = ""
+
         flow1 = parseFloat(serialResponse)
+
         log.info("Flow1 : " + flow1)
         break
 
@@ -108,7 +115,7 @@ socket.on("connect_error", (err) => {
 
 
 socket.on(ping, async function (request) {
-  socket.emit("r", `${sn}|${density}|${temperature}${flow1}`)
+  socket.emit("r", `${sn}|${density}|${temperature}|${flow1}`)
 })
 
 socket.on(updateSettings, async function (request) {

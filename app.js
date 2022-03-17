@@ -95,12 +95,9 @@ function readSerialData(data) {
 
 
 var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] })
-
 var rlog = require("./lib/remote-log.js")(socket, sn)
 
 socket.on('connect', function (socket) {
-
-
   log.info(`Connected to cloud ${serverUrl}!`)
   rlog.log(`connected to ${serverUrl}`)
 })
@@ -138,21 +135,6 @@ socket.on(restart, async function (request) {
     rlog.log(`restart NOW `)
      process.exit();
   }, 5000)
-
-    // exec('supervisorctl restart iot', (error, stdout, stderr) => {
-    //   if (error) {
-    //     rlog.error(`error: ${error.message}`);
-    //     return;
-    //   }
-
-    //   if (stderr) {
-    //     rlog.error(`stderr: ${stderr}`);
-    //     return;
-    //   }
-
-    //   rlog.log(`stdout:\n${stdout}`);
-    // });
-
 
 })
 

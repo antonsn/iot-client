@@ -4,6 +4,9 @@ const log = require("./lib/log.js")()
 const updateDotenv = require('update-dotenv')
 const downloader = require('./lib/patch.js')
 
+// File logger initialization
+const file = require('fs')
+
 require('dotenv').config()
 
 let portId = process.env.SERIAL
@@ -11,15 +14,18 @@ let serverUrl = process.env.SERVER_URL
 
 
 let sn
+
 var serialRequest = ""
 var density = 0.0
 var temperature = 0.0
 var flow1 = 0.0
 
+
 const ping = "p"
 const updateSettings = "us"
 const applyPatch = "ap"
 const restart = "restart"
+
 
 if (process.env.MOCK_SERIAL !== "true") {
   const { getSerialNumberSync } = require('raspi-serial-number')
@@ -42,7 +48,6 @@ else { //use mock serial
     )
   }
 
-  
   setInterval(() => {
     density = between(0, 5000)
     temperature = between(0, 50)
@@ -54,33 +59,23 @@ else { //use mock serial
 function readSerialData(data) {
   try {
 
-    //log.info("serial data:" + data)
     let serialResponse = data.toString('utf8')
     switch (serialRequest) {   // serialRequest will contain a previously received command or empty string
       case "SYS":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        density = parseFloat(serialResponse)
-
+        density = parseFloat(serialResponse).toFixed(2)
         log.info("Density : " + density)
         break
 
       case "TEMP":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        temperature = parseFloat(serialResponse)
-
+        temperature = parseFloat(serialResponse).toFixed(2)
         log.info("Temperature : " + temperature)
         break
 
       case "FLOW1":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        flow1 = parseFloat(serialResponse)
-
+        flow1 = parseFloat(serialResponse).toFixed(2)
         log.info("Flow1 : " + flow1)
         break
 
@@ -92,7 +87,10 @@ function readSerialData(data) {
           serialRequest = "TEMP"
         } else if (serialResponse.includes('FLOW1')) {
           serialRequest = "FLOW1"
-        } else {
+        } else if (serialResponse.includes('LOG')) {
+	  logDataToFile()
+	  serialRequest = ""
+        }else {
           serialRequest = ""
         }
         break
@@ -100,6 +98,19 @@ function readSerialData(data) {
   } catch (e) { log.error(e.message) }
 }
 
+function logDataToFile() {
+
+     let datetimeStr = new Date().toISOString().replace(/T/,' ').replace(/Z/, '')
+     let dateStr = datetimeStr.substring(0,10)
+     log.info("Writing log entry "+datetimeStr)
+
+     file.appendFile(`data/measurements-${dateStr}.csv`,`${datetimeStr},${density},${temperature},${flow1}\n`, (err) => {
+        if (err) {
+            log.error("Logging to file failed : "+err);
+        }
+     });
+
+}
 
 var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] })
 var rlog = require("./lib/remote-log.js")(socket, sn)
@@ -140,7 +151,7 @@ socket.on(restart, async function (request) {
 
   setTimeout(function () {
     rlog.log(`restart NOW `)
-     process.exit();
+    process.exit();
   }, 5000)
 
 })

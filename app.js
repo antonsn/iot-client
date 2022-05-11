@@ -42,7 +42,6 @@ else { //use mock serial
     )
   }
 
-  
   setInterval(() => {
     density = between(0, 5000)
     temperature = between(0, 50)
@@ -54,33 +53,23 @@ else { //use mock serial
 function readSerialData(data) {
   try {
 
-    //log.info("serial data:" + data)
     let serialResponse = data.toString('utf8')
     switch (serialRequest) {   // serialRequest will contain a previously received command or empty string
       case "SYS":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        density = parseFloat(serialResponse)
-
+        density = parseFloat(serialResponse).toFixed(2)
         log.info("Density : " + density)
         break
 
       case "TEMP":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        temperature = parseFloat(serialResponse)
-
+        temperature = parseFloat(serialResponse).toFixed(2)
         log.info("Temperature : " + temperature)
         break
 
       case "FLOW1":
-        log.info("Command Received: " + serialRequest)
         serialRequest = ""
-
-        flow1 = parseFloat(serialResponse)
-
+        flow1 = parseFloat(serialResponse).toFixed(2)
         log.info("Flow1 : " + flow1)
         break
 
@@ -140,7 +129,7 @@ socket.on(restart, async function (request) {
 
   setTimeout(function () {
     rlog.log(`restart NOW `)
-     process.exit();
+    process.exit();
   }, 5000)
 
 })

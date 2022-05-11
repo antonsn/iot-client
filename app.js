@@ -4,6 +4,9 @@ const log = require("./lib/log.js")()
 const updateDotenv = require('update-dotenv')
 const downloader = require('./lib/patch.js')
 
+// File logger initialization
+const file = require('fs')
+
 require('dotenv').config()
 
 let portId = process.env.SERIAL
@@ -11,15 +14,18 @@ let serverUrl = process.env.SERVER_URL
 
 
 let sn
+
 var serialRequest = ""
 var density = 0.0
 var temperature = 0.0
 var flow1 = 0.0
 
+
 const ping = "p"
 const updateSettings = "us"
 const applyPatch = "ap"
 const restart = "restart"
+
 
 if (process.env.MOCK_SERIAL !== "true") {
   const { getSerialNumberSync } = require('raspi-serial-number')
@@ -81,7 +87,10 @@ function readSerialData(data) {
           serialRequest = "TEMP"
         } else if (serialResponse.includes('FLOW1')) {
           serialRequest = "FLOW1"
-        } else {
+        } else if (serialResponse.includes('LOG')) {
+	  logDataToFile()
+	  serialRequest = ""
+        }else {
           serialRequest = ""
         }
         break
@@ -89,6 +98,19 @@ function readSerialData(data) {
   } catch (e) { log.error(e.message) }
 }
 
+function logDataToFile() {
+
+     let datetimeStr = new Date().toISOString().replace(/T/,' ').replace(/Z/, '')
+     let dateStr = datetimeStr.substring(0,10)
+     log.info("Writing log entry "+datetimeStr)
+
+     file.appendFile(`data/measurements-${dateStr}.csv`,`${datetimeStr},${density},${temperature},${flow1}\n`, (err) => {
+        if (err) {
+            log.error("Logging to file failed : "+err);
+        }
+     });
+
+}
 
 var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] })
 var rlog = require("./lib/remote-log.js")(socket, sn)

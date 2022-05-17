@@ -52,7 +52,7 @@ else { //use mock serial
     density = between(0, 5000)
     temperature = between(0, 50)
     flow1 = between(0, 500)
-  }, 1000)
+  }, 10000)
 
 }
 
@@ -88,9 +88,9 @@ function readSerialData(data) {
         } else if (serialResponse.includes('FLOW1')) {
           serialRequest = "FLOW1"
         } else if (serialResponse.includes('LOG')) {
-	  logDataToFile()
-	  serialRequest = ""
-        }else {
+          logDataToFile()
+          serialRequest = ""
+        } else {
           serialRequest = ""
         }
         break
@@ -100,15 +100,15 @@ function readSerialData(data) {
 
 function logDataToFile() {
 
-     let datetimeStr = new Date().toISOString().replace(/T/,' ').replace(/Z/, '')
-     let dateStr = datetimeStr.substring(0,10)
-     log.info("Writing log entry "+datetimeStr)
+  let datetimeStr = new Date().toISOString().replace(/T/, ' ').replace(/Z/, '')
+  let dateStr = datetimeStr.substring(0, 10)
+  log.info("Writing log entry " + datetimeStr)
 
-     file.appendFile(`data/measurements-${dateStr}.csv`,`${datetimeStr},${density},${temperature},${flow1}\n`, (err) => {
-        if (err) {
-            log.error("Logging to file failed : "+err);
-        }
-     });
+  file.appendFile(`data/measurements-${dateStr}.csv`, `${datetimeStr},${density},${temperature},${flow1}\n`, (err) => {
+    if (err) {
+      log.error("Logging to file failed : " + err);
+    }
+  });
 
 }
 
@@ -116,7 +116,7 @@ var socket = io.connect(serverUrl, { reconnect: true, transports: ["websocket"] 
 var rlog = require("./lib/remote-log.js")(socket, sn)
 
 socket.on('connect', function (socket) {
-  log.info(`Connected to cloud ${serverUrl}!`)
+  log.info(`Connected  ${sn} to cloud ${serverUrl}!`)
   rlog.log(`connected to ${serverUrl}`)
 })
 
@@ -126,7 +126,9 @@ socket.on("connect_error", (err) => {
 
 
 socket.on(ping, async function (request) {
-  socket.emit("r", `${sn}|${density}|${temperature}|${flow1}`)
+  const data = `${sn}|${density}|${temperature}|${flow1}`
+  log.info(`ping send response ${data}`)
+  socket.emit("r", data)
 })
 
 socket.on(updateSettings, async function (request) {
